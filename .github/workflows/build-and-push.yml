@@ -6,48 +6,28 @@ on:
 
 jobs:
   build:
-    runs-on: [self-hosted, kubernetes]
+    runs-on: ubuntu-latest  # Solution simple et efficace
     timeout-minutes: 20
     
     steps:
     - name: Checkout
       uses: actions/checkout@v4
     
-    - name: Create Kaniko Job
-      run: |
-        cat <<EOF | kubectl apply -f -
-        apiVersion: batch/v1
-        kind: Job
-        metadata:
-          name: kaniko-build-${{ github.run_id }}
-          namespace: github-runners
-        spec:
-          template:
-            spec:
-              containers:
-              - name: kaniko
-                image: gcr.io/kaniko-project/executor:latest
-                args:
-                - "--context=git://github.com/${{ github.repository }}.git#${{ github.ref }}"
-                - "--destination=${{ secrets.DOCKER_USERNAME }}/guestbook:latest"
-                - "--destination=${{ secrets.DOCKER_USERNAME }}/guestbook:${{ github.sha }}"
-                env:
-                - name: DOCKER_CONFIG
-                  value: /kaniko/.docker
-                volumeMounts:
-                - name: docker-config
-                  mountPath: /kaniko/.docker
-              volumes:
-              - name: docker-config
-                secret:
-                  secretName: docker-config
-              restartPolicy: Never
-        EOF
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     
-    - name: Wait for job completion
-      run: |
-        kubectl wait --for=condition=complete job/kaniko-build-${{ github.run_id }} --timeout=600s -n github-runners
-    
-    - name: Clean up job
-      run: |
-        kubectl delete job kaniko-build-${{ github.run_id }} -n github-runners
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+      
+    - name: Build and push
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        platforms: linux/amd64,linux/arm64
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/guestbook:latest
+          ${{ secrets.DOCKER_USERNAME }}/guestbook:${{ github.sha }}
