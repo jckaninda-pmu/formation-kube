@@ -13,13 +13,24 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     
+    - name: Install kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+    
+    - name: Create Docker config secret
+      run: |
+        kubectl create secret generic docker-config \
+          --from-literal=config.json='{"auths":{"https://index.docker.io/v1/":{"username":"${{ secrets.DOCKER_USERNAME }}","password":"${{ secrets.DOCKER_PASSWORD }}","auth":"'$(echo -n "${{ secrets.DOCKER_USERNAME }}:${{ secrets.DOCKER_PASSWORD }}" | base64)'"}}}'
+    
     - name: Create Kaniko Job
       run: |
         cat <<EOF | kubectl apply -f -
         apiVersion: batch/v1
         kind: Job
         metadata:
-          name: kaniko-build-${{ github.sha }}
+          name: kaniko-build-${{ github.run_id }}
         spec:
           template:
             spec:
@@ -45,8 +56,9 @@ jobs:
     
     - name: Wait for job completion
       run: |
-        kubectl wait --for=condition=complete job/kaniko-build-${{ github.sha }} --timeout=600s
+        kubectl wait --for=condition=complete job/kaniko-build-${{ github.run_id }} --timeout=600s
     
-    - name: Clean up job
+    - name: Clean up
       run: |
-        kubectl delete job kaniko-build-${{ github.sha }}
+        kubectl delete job kaniko-build-${{ github.run_id }}
+        kubectl delete secret docker-config
