@@ -9,33 +9,17 @@ jobs:
     runs-on: [self-hosted, kubernetes]
     timeout-minutes: 20
     
-    services:
-      docker:
-        image: docker:dind
-        options: --privileged
-    
     steps:
     - name: Checkout
       uses: actions/checkout@v4
     
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+    - name: Build and push with Kaniko
+      uses: aevea/action-kaniko@master
       with:
-        driver: docker-container
-        install: true
-        use: true
-    
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
+        image: ${{ secrets.DOCKER_USERNAME }}/guestbook
+        tag: latest,${{ github.sha }}
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-      
-    - name: Build and push
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: |
-          ${{ secrets.DOCKER_USERNAME }}/guestbook:latest
-          ${{ secrets.DOCKER_USERNAME }}/guestbook:${{ github.sha }}
+        cache: true
+        build_args: |
+          BUILDPLATFORM=linux/arm64
