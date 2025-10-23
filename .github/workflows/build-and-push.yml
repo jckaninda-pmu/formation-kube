@@ -13,13 +13,40 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     
-    - name: Build and push with Kaniko
-      uses: aevea/action-kaniko@master
-      with:
-        image: ${{ secrets.DOCKER_USERNAME }}/guestbook
-        tag: latest,${{ github.sha }}
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        cache: true
-        build_args: |
-          BUILDPLATFORM=linux/arm64
+    - name: Create Kaniko Job
+      run: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: kaniko-build-${{ github.sha }}
+        spec:
+          template:
+            spec:
+              containers:
+              - name: kaniko
+                image: gcr.io/kaniko-project/executor:latest
+                args:
+                - "--context=git://github.com/${{ github.repository }}.git#${{ github.ref }}"
+                - "--destination=${{ secrets.DOCKER_USERNAME }}/guestbook:latest"
+                - "--destination=${{ secrets.DOCKER_USERNAME }}/guestbook:${{ github.sha }}"
+                env:
+                - name: DOCKER_CONFIG
+                  value: /kaniko/.docker
+                volumeMounts:
+                - name: docker-config
+                  mountPath: /kaniko/.docker
+              volumes:
+              - name: docker-config
+                secret:
+                  secretName: docker-config
+              restartPolicy: Never
+        EOF
+    
+    - name: Wait for job completion
+      run: |
+        kubectl wait --for=condition=complete job/kaniko-build-${{ github.sha }} --timeout=600s
+    
+    - name: Clean up job
+      run: |
+        kubectl delete job kaniko-build-${{ github.sha }}
