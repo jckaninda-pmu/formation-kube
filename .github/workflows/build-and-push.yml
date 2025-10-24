@@ -4,6 +4,9 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest  # Solution simple et efficace
@@ -31,7 +34,7 @@ jobs:
         tags: |
           ${{ secrets.DOCKER_USERNAME }}/guestbook:latest
           ${{ secrets.DOCKER_USERNAME }}/guestbook:${{ github.sha }}
-          
+
     - name: Update Helm chart
       run: |
         # Mettre à jour le tag dans values.yaml
