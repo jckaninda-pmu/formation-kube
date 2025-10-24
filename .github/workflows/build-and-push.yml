@@ -31,3 +31,15 @@ jobs:
         tags: |
           ${{ secrets.DOCKER_USERNAME }}/guestbook:latest
           ${{ secrets.DOCKER_USERNAME }}/guestbook:${{ github.sha }}
+          
+    - name: Update Helm chart
+      run: |
+        # Mettre à jour le tag dans values.yaml
+        sed -i "s/tag: .*/tag: \"${{ github.sha }}\"/" helm/guestbook/values.yaml
+        
+        # Committer le changement
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add helm/guestbook/values.yaml
+        git commit -m "Update image tag to ${{ github.sha }}" || exit 0
+        git push

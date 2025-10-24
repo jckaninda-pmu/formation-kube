@@ -1,0 +1,17 @@
+apiVersion: v2
+name: argocd-bootstrap
+description: Bootstrap ArgoCD with dependencies and automatic setup
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - argocd
+  - gitops
+  - bootstrap
+home: https://github.com/jckaninda-pmu/formation-kube
+maintainers:
+  - name: Jean-Christophe Kaninda
+dependencies:
+  - name: argo-cd
+    version: "5.51.6"
+    repository: "https://argoproj.github.io/argo-helm"

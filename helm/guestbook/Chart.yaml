@@ -1,0 +1,17 @@
+apiVersion: v2
+name: guestbook
+description: A Helm chart for Guestbook application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - guestbook
+  - go
+  - redis
+home: https://github.com/jckaninda-pmu/formation-kube
+maintainers:
+  - name: Jean-Christophe Kaninda
+dependencies:
+  - name: redis
+    version: "18.1.5"
+    repository: "https://charts.bitnami.com/bitnami"

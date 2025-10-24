@@ -1,0 +1,100 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: argocd-repo-setup
+  namespace: argocd
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    spec:
+      serviceAccountName: argocd-repo-setup
+      restartPolicy: Never
+      containers:
+      - name: repo-setup
+        image: argoproj/argocd:v2.8.4
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "🔧 Configuration du repository dans ArgoCD..."
+          
+          # Attendre qu'ArgoCD soit prêt
+          until argocd admin settings rbac can-i create applications --grpc-web; do
+            echo "⏳ Attente qu'ArgoCD soit prêt..."
+            sleep 10
+          done
+          
+          # Ajouter le repository
+          argocd repo add {{ .Values.guestbookApp.source.repoURL }} \
+            --type git \
+            --name formation-kube \
+            --grpc-web || echo "Repository déjà ajouté"
+          
+          echo "✅ Repository configuré avec succès!"
+        env:
+        - name: ARGOCD_SERVER
+          value: "argocd-server.argocd.svc.cluster.local:443"
+        - name: ARGOCD_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: argocd-repo-setup-token
+              key: token
+  backoffLimit: 3
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-repo-setup
+  namespace: argocd
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-repo-setup
+  namespace: argocd
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-4"
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list"]
+- apiGroups: ["argoproj.io"]
+  resources: ["applications", "repositories"]
+  verbs: ["get", "list", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-repo-setup
+  namespace: argocd
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-3"
+subjects:
+- kind: ServiceAccount
+  name: argocd-repo-setup
+  namespace: argocd
+roleRef:
+  kind: Role
+  name: argocd-repo-setup
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-repo-setup-token
+  namespace: argocd
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-2"
+type: Opaque
+data:
+  token: "" # Le token sera généré automatiquement par ArgoCD

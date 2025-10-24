@@ -1,0 +1,13 @@
+apiVersion: v2
+name: argocd-simple
+description: Simple ArgoCD installation without complex dependencies
+type: application
+version: 0.1.0
+appVersion: "2.8.4"
+keywords:
+  - argocd
+  - gitops
+  - simple
+home: https://github.com/jckaninda-pmu/formation-kube
+maintainers:
+  - name: Jean-Christophe Kaninda

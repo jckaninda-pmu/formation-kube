@@ -1,0 +1,61 @@
+# Configuration pour ArgoCD Bootstrap
+argo-cd:
+  # Configuration du serveur ArgoCD
+  server:
+    service:
+      type: LoadBalancer
+    extraArgs:
+      - --insecure
+    ingress:
+      enabled: false
+  
+  # Configuration des paramètres
+  configs:
+    params:
+      server.insecure: true
+      application.instanceLabelKey: argocd.argoproj.io/instance
+    
+    # Configuration des repositories
+    repositories:
+      formation-kube:
+        url: https://github.com/jckaninda-pmu/formation-kube.git
+        type: git
+  
+  # Configuration RBAC
+  rbac:
+    policy.default: role:readonly
+    policy.csv: |
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, clusters, *, *, allow
+      p, role:admin, repositories, *, *, allow
+      g, argocd-admins, role:admin
+
+# Configuration pour l'Application Guestbook
+guestbookApp:
+  enabled: true
+  name: guestbook
+  namespace: guestbook
+  project: default
+  source:
+    repoURL: https://github.com/jckaninda-pmu/formation-kube.git
+    path: helm/guestbook
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: guestbook
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+# Configuration des namespaces
+namespaces:
+  - name: argocd
+    labels:
+      name: argocd
+  - name: guestbook
+    labels:
+      name: guestbook
+      managed-by: argocd

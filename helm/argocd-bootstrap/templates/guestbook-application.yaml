@@ -1,0 +1,35 @@
+{{- if .Values.guestbookApp.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.guestbookApp.name }}
+  namespace: argocd
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ .Values.guestbookApp.project }}
+  source:
+    repoURL: {{ .Values.guestbookApp.source.repoURL }}
+    path: {{ .Values.guestbookApp.source.path }}
+    targetRevision: {{ .Values.guestbookApp.source.targetRevision }}
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: {{ .Values.guestbookApp.destination.server }}
+    namespace: {{ .Values.guestbookApp.destination.namespace }}
+  syncPolicy:
+    {{- if .Values.guestbookApp.syncPolicy.automated }}
+    automated:
+      prune: {{ .Values.guestbookApp.syncPolicy.automated.prune }}
+      selfHeal: {{ .Values.guestbookApp.syncPolicy.automated.selfHeal }}
+    {{- end }}
+    {{- if .Values.guestbookApp.syncPolicy.syncOptions }}
+    syncOptions:
+      {{- toYaml .Values.guestbookApp.syncPolicy.syncOptions | nindent 6 }}
+    {{- end }}
+  revisionHistoryLimit: 3
+{{- end }}

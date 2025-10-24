@@ -71,6 +71,16 @@ func HealthHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func VersionHandler(rw http.ResponseWriter, req *http.Request) {
+    version := map[string]string{
+        "version": "v1.1.0",
+        "build":   "GitOps-test",
+        "date":    time.Now().Format("2006-01-02"),
+    }
+    versionJSON := HandleError(json.MarshalIndent(version, "", "  ")).([]byte)
+    rw.Write(versionJSON)
+}
+
 func HandleError(result interface{}, err error) (r interface{}) {
 	if err != nil {
 		panic(err)
@@ -88,6 +98,7 @@ func main() {
 	r.Path("/info").Methods("GET").HandlerFunc(InfoHandler)
 	r.Path("/env").Methods("GET").HandlerFunc(EnvHandler)
 	r.Path("/healthz").Methods("GET").HandlerFunc(HealthHandler)
+	r.Path("/version").Methods("GET").HandlerFunc(VersionHandler)
 
 	n := negroni.Classic()
 	n.UseHandler(r)
